@@ -1,0 +1,45 @@
+-- Small set of safe window rules. Avoid application-specific class names
+
+-- until they have been measured with `hyprctl clients`.
+
+  
+
+hl.window_rule({
+
+name = "suppress-maximize-events",
+
+match = {
+
+class = ".*",
+
+},
+
+suppress_event = "maximize",
+
+})
+
+  
+
+hl.window_rule({
+
+name = "fix-xwayland-drags",
+
+match = {
+
+class = "^$",
+
+title = "^$",
+
+xwayland = true,
+
+float = true,
+
+fullscreen = false,
+
+pin = false,
+
+},
+
+no_focus = true,
+
+})

@@ -1,0 +1,2 @@
+-- Stage 1 intentionally uses Hyprland's built-in stock wallpaper.
+-- hyprpaper itself is kept as a separately managed package for future use.
