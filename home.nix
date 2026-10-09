@@ -1,61 +1,10 @@
 { config, pkgs, lib, inputs, system, ... }:
 
-let
-  unstable = import inputs.nixpkgs-unstable {
-    inherit system;
-    config.allowUnfree = true;
-  };
-
-  mcpoConfig = {
-    mcpServers = {
-      blender = {
-        command = "${pkgs.uv}/bin/uvx";
-        args = [
-          "mcp-for-blender==2.1.1"
-        ];
-
-        env = {
-          BLENDER_HOST = "127.0.0.1";
-          BLENDER_PORT = "9876";
-        };
-      };
-    };
-  };
-in
 {
   imports = [
     ./packages.nix
+    ./mcp.nix
   ];
-
-  xdg.configFile."mcpo/blender.json".text =
-    builtins.toJSON mcpoConfig;
-
-  systemd.user.services.mcpo-blender = {
-    Unit = {
-      Description = "MCPO bridge for MCP for Blender";
-      After = [ "network-online.target" ];
-    };
-
-    Service = {
-      ExecStart =
-        "${pkgs.uv}/bin/uvx "
-        + "mcpo==0.0.20 "
-        + "--host 127.0.0.1 "
-        + "--port 8001 "
-        + "--config %h/.config/mcpo/blender.json";
-
-      Restart = "on-failure";
-      RestartSec = 5;
-
-      Environment = [
-        "UV_PYTHON=${pkgs.python3}/bin/python3"
-      ];
-    };
-
-    Install = {
-      WantedBy = [ "default.target" ];
-    };
-  };
 
   home.username = "artem";
   home.homeDirectory = "/home/artem";
@@ -365,32 +314,10 @@ in
   home.file."Pictures/Screenshots/.keep".text = "";
 
   # ---------------------------------------------------------------------------
-  # LLAMA.CPP SERVER
+  # OPENCODE / LOCAL LLAMA.CPP PROVIDER
   # ---------------------------------------------------------------------------
 
-  # A local OpenAI-compatible API for both Open WebUI and OpenCode.
-  # The first start downloads the selected GGUF model from Hugging Face.
-  systemd.user.services.llama-server = {
-    Unit = {
-      Description = "Local llama.cpp OpenAI-compatible inference server";
-      After = [ "network-online.target" ];
-      Wants = [ "network-online.target" ];
-    };
-
-    Service = {
-      ExecStart = "${unstable.llama-cpp.override { vulkanSupport = true; }}/bin/llama-server -hf Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M --host 127.0.0.1 --port 10000 --ctx-size 8192 --n-gpu-layers 99";
-      Restart = "on-failure";
-      RestartSec = 5;
-    };
-
-    Install.WantedBy = [ "default.target" ];
-  };
-
-  # ---------------------------------------------------------------------------
-  # OPENCODE
-  # ---------------------------------------------------------------------------
-
-  # OpenCode uses an OpenAI-compatible provider backed by local llama-server.
+  # OpenCode uses the same manually started llama-server.
   # The model ID below matches the Qwen2.5-Coder GGUF used by llama-server.
   xdg.configFile."opencode/opencode.json".text =
   builtins.toJSON {
@@ -411,34 +338,7 @@ in
         };
       };
     };
-
-    mcp.servers."blender-mcp" = {
-      type = "local";
-
-      command = [
-        "uvx"
-        "mcp-for-blender"
-      ];
-
-      environment = {
-        BLENDER_HOST = "localhost";
-        BLENDER_PORT = "9876";
-      };
-    };
   };
 
 
-  # ---------------------------------------------------------------------------
-  # OPEN WEBUI / FIREFOX LAUNCHER
-  # ---------------------------------------------------------------------------
-
-  home.file.".local/share/applications/open-webui.desktop".text = ''
-    [Desktop Entry]
-    Type=Application
-    Name=Open WebUI
-    Comment=Local AI web interface
-    Exec=firefox --new-window http://127.0.0.1:3000
-    Terminal=false
-    Categories=Network;AI;
-  '';
 }

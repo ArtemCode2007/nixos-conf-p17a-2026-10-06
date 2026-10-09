@@ -20,6 +20,14 @@ in
     vscode
     kitty
     nemo
+
+    # Task manager / Microsoft To Do alternative.
+    planify
+
+    # Archive manager + 7-Zip-compatible CLI.
+    peazip
+    p7zip
+
     fuzzel
     waybar
     swaynotificationcenter
@@ -99,13 +107,14 @@ in
     audacious
 
     # -------------------------------------------------------------------------
-    # LOCAL AI
+    # LOCAL AI / MCP
     # -------------------------------------------------------------------------
 
     # Vulkan-enabled llama.cpp for the Ryzen 7 8845HS / Radeon 780M.
     (unstable.llama-cpp.override {
       vulkanSupport = true;
     })
+
 
     # -------------------------------------------------------------------------
     # OPEN-SOURCE ALTERNATIVES TO ADOBE / WINDOWS-ONLY WORKFLOWS

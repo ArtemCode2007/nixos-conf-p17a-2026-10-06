@@ -1,93 +1,258 @@
-# NixOS 26.05 + Home Manager + Hyprland — P17A update (2026-10-06)
+# NixOS 26.05 + Home Manager + Hyprland — P17A
+
+## Назначение
+
+Эта конфигурация рассчитана на Maibenben Perfectum P17A-R788UM и разделяет:
+
+- NixOS — системные компоненты;
+- Home Manager — пользовательские программы и настройки;
+- Hyprland — графическую сессию;
+- llama.cpp и MCP — ручной запуск по требованию.
 
 ## Что изменено
 
-### 1. Микрофон / PipeWire
-Добавлены `pavucontrol` и `qpwgraph`, Waybar -> click opens `pavucontrol`, right click opens `qpwgraph`.
+### 1. Убрано из автозапуска и удалено
 
-Hotkeys:
-- `Super + Alt + Up/Down` — microphone volume +/- 5%, maximum 200%
-- `Super + Alt + M` — microphone mute
-- `XF86AudioMicMute` — microphone mute
+Open WebUI больше не устанавливается и не запускается. Удалены его NixOS service и `.desktop` launcher.
 
-Важно: именно физический дефект "белый шум вместо голоса" нельзя безопасно исправить одной декларацией без данных с живого аудиоустройства. Конфигурация не форсирует неизвестный ALSA profile, чтобы не сломать реальный codec profile. После входа проверьте `pavucontrol` -> Input Devices и выберите физический Internal Microphone, а не Monitor of Output.
+`llama-server` больше не является user systemd service: он не стартует при входе в систему.
 
-Для диагностики:
-```bash
-wpctl status
-wpctl get-volume @DEFAULT_AUDIO_SOURCE@
+`mcpo` полностью удалён из конфигурации. Вместо него используется `mcp-proxy`, запускаемый через `uvx` в явно закреплённой версии `0.12.0`.
+
+### 2. AppImage
+
+AppImage включён штатным способом NixOS:
+
+```nix
+programs.appimage = {
+  enable = true;
+  binfmt = true;
+};
 ```
 
-### 2. Screenshots
-`Print` теперь:
-1. запускает `slurp`;
-2. сохраняет PNG в `~/Pictures/Screenshots/`;
-3. копирует сохраненный PNG в Wayland clipboard.
+Теперь `.AppImage` можно запускать как обычный исполняемый файл. Отдельный AppImage в конфигурацию не добавлен, потому что в исходном списке не указано конкретное приложение.
 
-Формат имени:
-`YYYY-MM-DD_HH-MM-SS.png`
+### 3. Аналог Microsoft To Do
 
-### 3. llama.cpp + Open WebUI + OpenCode
-- `llama.cpp` берётся из `nixpkgs-unstable` с `vulkanSupport = true` для Radeon 780M.
-- `llama-server` запускается как user systemd service.
-- Open WebUI запускается как NixOS service на `127.0.0.1:3000`.
-- Firefox launcher добавлен в application menu.
-- OpenCode получает локальный OpenAI-compatible provider `http://127.0.0.1:10000/v1`.
+Добавлен `planify` как графический task manager.
 
-Open WebUI имеет native MCP support. Node.js/npm не нужны для самого MCP. Node.js нужен здесь отдельно для пользовательских Node/NPM инструментов и JavaScript-based MCP servers.
+### 4. Аналог 7-Zip / NanoZip
 
-В этой конфигурации Open WebUI подключается к llama.cpp как к OpenAI-compatible API.
+Добавлены:
 
-### 4. Локальная модель
-Для OpenCode сервер настроен на:
-`Qwen2.5-Coder-7B-Instruct Q4_K_M`
-Первый запуск user-service `llama-server` скачивает этот GGUF из Hugging Face автоматически.
+- `peazip` — графический архиватор;
+- `p7zip` — CLI-инструменты `7z`/`7za`/`7zr`.
 
-Выбран 7B-класс как более реалистичный для 16 GB RAM + Radeon 780M shared memory.
+### 5. Blender MCP + DuckDuckGo MCP
 
-Первый старт `llama-server` может скачать GGUF через Hugging Face. После этого модель обслуживается локально.
+Конфигурация MCP находится в:
 
-### 5. Proton / 1920x1080
-Добавлен:
-```lua
-xwayland = {
-  force_zero_scaling = true,
+```text
+~/.config/mcp/mcp-servers.json
+```
+
+Файл содержит два MCP-сервера:
+
+```json
+{
+  "mcpServers": {
+    "blender": {
+      "command": "uvx",
+      "args": [
+        "mcp-for-blender==2.1.1"
+      ],
+      "env": {
+        "BLENDER_HOST": "127.0.0.1",
+        "BLENDER_PORT": "9876"
+      }
+    },
+    "duckduckgo": {
+      "command": "uvx",
+      "args": [
+        "--with",
+        "duckduckgo-mcp-server[browser]",
+        "duckduckgo-mcp-server",
+        "--search-backend",
+        "auto"
+      ]
+    }
+  }
 }
 ```
 
-и `gamescope`.
+`mcp-for-blender` подключается к аддону Blender через `127.0.0.1:9876`. После установки конфигурации один раз установите аддон в Blender:
 
-Это исправляет XWayland scaling path, но не заставляет игру уважать 1920x1080, если сама игра принудительно выбирает другое разрешение.
-
-Для проблемных Steam-игр используйте launch option:
-```text
-gamescope -W 1920 -H 1080 -w 1920 -h 1080 -f -- %command%
+```bash
+uvx mcp-for-blender install-addon
 ```
 
-### 6. 200% volume
-Hotkeys now use `wpctl -l 2.0` for output and microphone.
-`pavucontrol` provides per-application and per-device routing/volume control.
+Затем в Blender включите `Interface: MCP for Blender` и запустите MCP Server. Для удобства конфигурация также создаёт команду:
 
-### 7. Новые программы
-Добавлены:
-- latest Node.js из `nixpkgs-unstable` (npm bundled)
-- OpenCode
-- Fish
-- fastfetch + neofetch
-- eza
-- btop
-- hwinfo
-- lshw
-- lm_sensors
-- smartmontools
-- mission-center
-- pavucontrol
-- qpwgraph
-- Python 3.14 + pip + virtualenv
+```bash
+blender-mcp-install-addon
+```
 
-Старый AIMP-подобный сценарий покрывает `audacious`.
+Текущая документация проекта использует именно `mcp-for-blender` и рекомендует `install-addon`.
 
-## Flake architecture
+### 6. Почему здесь используется mcp-proxy, а не mcpo
+
+`mcpo` переводит MCP в OpenAPI. Для MCP Servers в Web UI llama.cpp нужен именно MCP HTTP/SSE endpoint. `mcp-proxy` предназначен для преобразования локального stdio MCP в SSE/Streamable HTTP и умеет публиковать именованные серверы по отдельным URL.
+
+Запуск всех MCP вручную:
+
+```bash
+mcp-proxy-start
+```
+
+Фактически команда запускает `mcp-proxy==0.12.0` через `uvx`:
+
+```bash
+uvx mcp-proxy==0.12.0 --host 127.0.0.1 --port 8001 \
+  --named-server-config ~/.config/mcp/mcp-servers.json
+```
+
+Конфигурация `mcp-proxy` публикует серверы по адресам:
+
+```text
+Blender:    http://127.0.0.1:8001/servers/blender/sse
+DuckDuckGo: http://127.0.0.1:8001/servers/duckduckgo/sse
+```
+
+### 7. llama.cpp
+
+`llama.cpp` по-прежнему устанавливается с Vulkan support для Radeon 780M, но `llama-server` не запускается автоматически. Вместо systemd service добавлена обычная пользовательская команда:
+
+```bash
+llama-server-start
+```
+
+Она запускает:
+
+```text
+http://127.0.0.1:10000
+```
+
+и включает CORS proxy для MCP Web UI через:
+
+```text
+--ui-mcp-proxy
+```
+
+Это соответствует механизму `Use llama-server proxy` в окне добавления MCP-сервера.
+
+Для открытия встроенного Web UI добавлена команда:
+
+```bash
+llama-ui
+```
+
+### 8. Подключение MCP через Web UI llama.cpp
+
+1. В одном терминале запустите:
+
+```bash
+mcp-proxy-start
+```
+
+2. Во втором терминале запустите:
+
+```bash
+llama-server-start
+```
+
+3. Откройте Web UI:
+
+```bash
+llama-ui
+```
+
+4. В окне **MCP Servers → Add New MCP Server** используйте:
+
+| Поле | Blender | DuckDuckGo |
+|---|---|---|
+| Server URL | `http://127.0.0.1:8001/servers/blender/sse` | `http://127.0.0.1:8001/servers/duckduckgo/sse` |
+| Display name | `Blender MCP` | `DuckDuckGo MCP` |
+| Authorization | выключено | выключено |
+| Custom Headers | не требуются | не требуются |
+| Use llama-server proxy | включить | включить |
+
+URL заканчивается на `/sse`, поэтому Web UI llama.cpp распознаёт SSE transport.
+
+## Важно про llama.cpp MCP
+
+У `llama-server` есть два разных MCP-механизма, их не следует путать:
+
+### Вариант A — прямой stdio MCP
+
+llama.cpp умеет сам запускать stdio MCP через:
+
+```bash
+llama-server ... --mcp-servers-config ~/.config/mcp/mcp-servers.json
+```
+
+Это обходится без внешнего proxy.
+
+### Вариант B — Web UI + HTTP/SSE MCP
+
+Здесь используется именно этот вариант, потому что он соответствует вашему сценарию с окном **MCP Servers** и ссылкой для вставки. `mcp-proxy` публикует локальные stdio MCP как HTTP/SSE endpoint, а `--ui-mcp-proxy` позволяет встроенному Web UI llama.cpp обращаться к ним через server-side CORS proxy.
+
+## Управление
+
+### Запустить llama.cpp вручную
+
+```bash
+llama-server-start
+```
+
+Остановить — `Ctrl+C` в том же терминале.
+
+### Запустить MCP proxy вручную
+
+```bash
+mcp-proxy-start
+```
+
+Остановить — `Ctrl+C`.
+
+### Проверка портов
+
+```bash
+ss -ltnp | grep -E ':8001|:10000'
+```
+
+## Проверка конфигурации
+
+```bash
+nix flake check --show-trace
+sudo nixos-rebuild test --flake .#p17a --show-trace
+```
+
+После успешной проверки:
+
+```bash
+sudo nixos-rebuild switch --flake .#p17a --show-trace
+```
+
+После входа в Hyprland:
+
+```bash
+hyprctl configerrors
+wpctl status
+```
+
+После ручного запуска llama.cpp:
+
+```bash
+curl http://127.0.0.1:10000/v1/models
+```
+
+После ручного запуска MCP proxy:
+
+```bash
+curl http://127.0.0.1:8001/status
+```
+
+## Архитектура файлов
 
 ```text
 flake.nix
@@ -97,6 +262,9 @@ flake.nix
  └── Home Manager
       └── home.nix
            ├── packages.nix
+           ├── mcp.nix
+           ├── mcp/
+           │    └── mcp-servers.json
            └── hypr/
                 ├── hyprland.lua
                 ├── monitor.lua
@@ -108,53 +276,8 @@ flake.nix
                 └── hyprpaper.lua
 ```
 
-## Проверка
+## Источники MCP
 
-```bash
-cd ~/nixos-conf
-nix flake check --show-trace
-sudo nixos-rebuild test --flake .#p17a --show-trace
-```
-
-После успешного test:
-
-```bash
-sudo nixos-rebuild switch --flake .#p17a --show-trace
-reboot
-```
-
-После входа:
-
-```bash
-hyprctl configerrors
-hyprctl monitors
-wpctl status
-curl http://127.0.0.1:10000/v1/models
-curl http://127.0.0.1:3000
-```
-
-Open WebUI:
-`http://127.0.0.1:3000`
-
-llama.cpp API:
-`http://127.0.0.1:10000/v1`
-
-## Ограничение по MCP OAuth
-
-Native MCP есть в Open WebUI. Для OAuth-backed MCP integrations документация Open WebUI требует `WEBUI_SECRET_KEY`. Для обычных локальных MCP integrations Node.js/npm не являются обязательными.
-
-Для production-like OAuth setup secret следует вынести в secret manager / environmentFile, а не хранить в Git.
-
-
-## Управление llama-server
-
-```bash
-systemctl --user status llama-server
-journalctl --user -u llama-server -e
-```
-
-Проверка API:
-
-```bash
-curl http://127.0.0.1:10000/v1/models
-```
+- Blender MCP: https://github.com/ahujasid/mcp-for-blender
+- DuckDuckGo MCP: https://github.com/nickclyde/duckduckgo-mcp-server
+- MCP proxy: https://github.com/sparfenyuk/mcp-proxy (0.12.0)

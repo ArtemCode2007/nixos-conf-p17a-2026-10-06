@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "uvx",
+      "args": [
+        "mcp-for-blender==2.1.1"
+      ],
+      "env": {
+        "BLENDER_HOST": "127.0.0.1",
+        "BLENDER_PORT": "9876"
+      }
+    },
+    "duckduckgo": {
+      "command": "uvx",
+      "args": [
+        "--with",
+        "duckduckgo-mcp-server[browser]==0.7.0",
+        "duckduckgo-mcp-server",
+        "--search-backend",
+        "auto"
+      ]
+    }
+  }
+}

@@ -64,6 +64,16 @@ in
   programs.nix-ld.enable = true;
 
   # ---------------------------------------------------------------------------
+  # APPIMAGE
+  # ---------------------------------------------------------------------------
+
+  # Run AppImage files directly on NixOS.
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
+  };
+
+  # ---------------------------------------------------------------------------
   # HYPRLAND + WAYLAND SESSION
   # ---------------------------------------------------------------------------
 
@@ -144,28 +154,6 @@ in
   # Gamescope is available for games that ignore the native monitor mode.
   programs.gamescope = {
     enable = true;
-  };
-
-  # ---------------------------------------------------------------------------
-  # LOCAL AI: Open WebUI
-  # ---------------------------------------------------------------------------
-
-  # Open WebUI is intentionally provided from nixpkgs-unstable so the
-  # 26.05 system can use a current Open WebUI release/module-compatible package.
-  services.open-webui = {
-    enable = true;
-    package = unstable.open-webui;
-    stateDir = "/var/lib/open-webui";
-    host = "127.0.0.1";
-    port = 3000;
-    openFirewall = false;
-
-    environment = {
-      ENABLE_PERSISTENT_CONFIG = "true";
-      AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST = "30";
-      # Native MCP is provided by Open WebUI itself; Node/npm are not
-      # required just to enable MCP.
-    };
   };
 
   # ---------------------------------------------------------------------------
